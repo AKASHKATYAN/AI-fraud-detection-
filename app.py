@@ -9,7 +9,23 @@ from datetime import datetime
 # PAGE CONFIG
 # -------------------------------------
 st.set_page_config(page_title="AI Public Fraud Detection", layout="wide")
-st.title("🛡️ AI-Based Public Fraud Detection System")
+
+# Styled header
+st.markdown("""
+<style>
+header {
+    background-color: #2e86de;
+    padding: 15px;
+    font-size: 24px;
+    font-weight: bold;
+    text-align: center;
+    color: white;
+    border-radius: 5px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown("<header>🛡️ AI Public Fraud Detection Dashboard</header>", unsafe_allow_html=True)
 
 # -------------------------------------
 # LOAD MODEL & SCALER
@@ -23,6 +39,18 @@ def load_artifacts():
     return model, scaler
 
 model, scaler = load_artifacts()
+
+# -------------------------------------
+# SIDEBAR
+# -------------------------------------
+st.sidebar.image("https://streamlit.io/images/brand/streamlit-mark-color.png", width=150)
+st.sidebar.markdown("""
+👩‍💻 **Developer:** Akash  
+📍 **Project:** AI Fraud Detection  
+📊 **Use Case:** Government Transactions Audit  
+""")
+
+st.sidebar.header("🔍 Filters")
 
 # -------------------------------------
 # FILE UPLOAD
@@ -55,10 +83,8 @@ df["is_weekend"] = df["transaction_time"].dt.weekday.apply(lambda x: 1 if x >= 5
 df["log_amount"] = np.log1p(df["amount"])
 dept_mean = df.groupby("department_id")["amount"].transform("mean")
 dept_std = df.groupby("department_id")["amount"].transform("std")
-
 df["amount_zscore_dept"] = (df["amount"] - dept_mean) / dept_std
 df["amount_vs_dept_mean"] = df["amount"] / dept_mean
-
 df["vendor_txn_count"] = df.groupby("vendor_id")["vendor_id"].transform("count")
 df["vendor_avg_amount"] = df.groupby("vendor_id")["amount"].transform("mean")
 df["vendor_amount_ratio"] = df["amount"] / df["vendor_avg_amount"]
@@ -84,7 +110,6 @@ df["fraud_flag"] = df["fraud_flag"].apply(lambda x: 1 if x == -1 else 0)
 # -------------------------------------
 df["risk_score"] = ((df["anomaly_score"].max() - df["anomaly_score"]) /
                     (df["anomaly_score"].max() - df["anomaly_score"].min())) * 100
-
 df["risk_level"] = pd.cut(
     df["risk_score"],
     bins=[0,30,70,100],
@@ -111,29 +136,24 @@ def explain(row):
 df["explanation"] = df.apply(explain, axis=1)
 
 # -------------------------------------
-# FILTERS
+# SIDEBAR FILTERS
 # -------------------------------------
-st.sidebar.header("🔍 Filters")
-
 dept_filter = st.sidebar.multiselect(
     "Department",
     options=df["department_id"].unique(),
     default=df["department_id"].unique()
 )
-
 vendor_filter = st.sidebar.multiselect(
     "Vendor",
     options=df["vendor_id"].unique(),
     default=df["vendor_id"].unique()
 )
-
 amount_range = st.sidebar.slider(
     "Amount Range",
     int(df["amount"].min()),
     int(df["amount"].max()),
     (int(df["amount"].min()), int(df["amount"].max()))
 )
-
 df = df[
     (df["department_id"].isin(dept_filter)) &
     (df["vendor_id"].isin(vendor_filter)) &
@@ -142,88 +162,121 @@ df = df[
 ]
 
 # -------------------------------------
-# METRICS
+# TAB LAYOUT
 # -------------------------------------
-st.subheader("📊 Overview Metrics")
-c1, c2, c3, c4 = st.columns(4)
-c1.metric("Total Transactions", len(df))
-c2.metric("Fraud Detected", df["fraud_flag"].sum())
-c3.metric("High Risk", (df["risk_level"]=="High").sum())
-c4.metric("Fraud Rate (%)", round(df["fraud_flag"].mean()*100,2))
+tab1, tab2, tab3, tab4 = st.tabs([
+    "📊 Overview",
+    "📈 Analysis",
+    "📄 Flagged Audits",
+    "💬 Auditor Assistant"
+])
 
-# -------------------------------------
-# RISK DISTRIBUTION
-# -------------------------------------
-st.subheader("📉 Risk Score Distribution")
-fig, ax = plt.subplots()
-ax.hist(df["risk_score"], bins=40)
-st.pyplot(fig)
+# --------------------- Tab 1: Overview ---------------------
+with tab1:
+    st.header("📊 Overview Metrics")
+    total = len(df)
+    fraud_count = df["fraud_flag"].sum()
+    high_risk = (df["risk_level"]=="High").sum()
+    fraud_pct = round(df["fraud_flag"].mean()*100,2)
 
-# -------------------------------------
-# DEPARTMENT HEATMAP
-# -------------------------------------
-st.subheader("🏢 Department Risk Summary")
-dept_risk = df.groupby("department_id")["risk_score"].mean()
-st.bar_chart(dept_risk)
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("🗂 Total Transactions", total)
+    c2.metric("🚨 Fraud Detected", fraud_count)
+    c3.metric("🔥 High Risk", high_risk)
+    c4.metric("📊 Fraud Rate (%)", f"{fraud_pct} %")
 
-# -------------------------------------
-# VENDOR WATCHLIST
-# -------------------------------------
-st.subheader("🚩 Vendor Watchlist")
-vendor_watch = df[df["fraud_flag"]==1]["vendor_id"].value_counts().head(10)
-if vendor_watch.empty:
-    st.info("No risky vendors found")
-else:
-    st.bar_chart(vendor_watch)
+# --------------------- Tab 2: Analysis ---------------------
+with tab2:
+    st.header("📈 Risk Distribution")
+    fig, ax = plt.subplots()
+    ax.hist(df["risk_score"], bins=30, color="#2e86de", edgecolor="white")
+    ax.set_xlabel("Risk Score")
+    ax.set_ylabel("Number of Transactions")
+    st.pyplot(fig)
 
-# -------------------------------------
-# TIME-BASED PATTERNS
-# -------------------------------------
-st.subheader("⏰ Fraud by Hour")
-hour_fraud = df.groupby("hour")["fraud_flag"].mean()
-st.line_chart(hour_fraud)
+    st.header("🏢 Department Risk Summary")
+    dept_risk = df.groupby("department_id")["risk_score"].mean()
+    st.bar_chart(dept_risk)
 
-# -------------------------------------
-# FLAGGED TRANSACTIONS
-# -------------------------------------
-st.subheader("📄 Flagged Transactions for Audit")
+    st.header("🚩 Vendor Watchlist")
+    vendor_watch = df[df["fraud_flag"]==1]["vendor_id"].value_counts().head(10)
+    if vendor_watch.empty:
+        st.info("No risky vendors found")
+    else:
+        st.bar_chart(vendor_watch)
 
-flagged = df[df["fraud_flag"]==1][[
-    "transaction_id","department_id","vendor_id",
-    "amount","risk_score","risk_level","explanation"
-]]
+    st.header("⏰ Fraud by Hour")
+    hour_fraud = df.groupby("hour")["fraud_flag"].mean()
+    st.line_chart(hour_fraud)
 
-if flagged.empty:
-    st.info("No suspicious transactions")
-else:
-    st.dataframe(flagged)
-# -------------------------------------
-# EMAIL ALERT SIMULATION
-# -------------------------------------
-st.subheader("📧 Fraud Alert Simulation")
+# --------------------- Tab 3: Flagged Audits ---------------------
+with tab3:
+    st.header("📄 Flagged Transactions for Audit")
+    flagged = df[df["fraud_flag"]==1][[
+        "transaction_id","department_id","vendor_id",
+        "amount","risk_score","risk_level","explanation"
+    ]]
+    if flagged.empty:
+        st.info("No suspicious transactions")
+    else:
+        st.dataframe(flagged)
 
-HIGH_RISK_THRESHOLD = 80
+        # Download CSV
+        csv_data = flagged.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            label="📥 Download Suspicious Transactions (CSV)",
+            data=csv_data,
+            file_name="suspicious_audit_report.csv",
+            mime="text/csv"
+        )
 
-high_risk_cases = df[df["risk_score"] >= HIGH_RISK_THRESHOLD]
+        # Email alert simulation
+        HIGH_RISK_THRESHOLD = 80
+        high_risk_cases = df[df["risk_score"] >= HIGH_RISK_THRESHOLD]
+        if high_risk_cases.empty:
+            st.success("✅ No high-risk fraud detected. No alerts triggered.")
+        else:
+            st.warning(f"🚨 {len(high_risk_cases)} HIGH-RISK transactions detected!")
+            email_body = f"""
+FRAUD ALERT 🚨
 
-if high_risk_cases.empty:
-    st.success("✅ No high-risk fraud detected. No alerts triggered.")
-else:
-    st.warning(f"🚨 {len(high_risk_cases)} HIGH-RISK transactions detected!")
+Number of High-Risk Transactions: {len(high_risk_cases)}
 
-    # Simulated email content
-    email_body = f"""
-    FRAUD ALERT 🚨
+Top Risky Vendors:
+{high_risk_cases['vendor_id'].value_counts().head(5).to_string()}
 
-    Number of High-Risk Transactions: {len(high_risk_cases)}
+Immediate audit is recommended.
+"""
+            with st.expander("📨 View Simulated Email Alert"):
+                st.code(email_body)
+            st.info("📤 Email alert sent to: audit.department@gov.in (SIMULATED)")
 
-    Top Risky Vendors:
-    {high_risk_cases['vendor_id'].value_counts().head(5).to_string()}
+# --------------------- Tab 4: Auditor Chatbot ---------------------
+with tab4:
+    st.header("💬 Virtual Auditor Chatbot")
+    user_query = st.text_input("Ask the Auditor Bot:", placeholder="Type your query here...")
+    if user_query:
+        user_query_lower = user_query.lower()
+        response = "🤖 Sorry, I didn't understand. Please ask about transactions, vendors, or risk."
 
-    Immediate audit is recommended.
-    """
+        if "high-risk" in user_query_lower or "high risk" in user_query_lower:
+            num_high_risk = (df["risk_level"]=="High").sum()
+            response = f"🤖 There are {num_high_risk} high-risk transactions detected."
+        elif "top vendor" in user_query_lower or "risky vendor" in user_query_lower:
+            top_vendors = df[df["fraud_flag"]==1]["vendor_id"].value_counts().head(5)
+            response = "🤖 Top risky vendors:\n" + top_vendors.to_string()
+        elif "explain transaction" in user_query_lower:
+            try:
+                tx_id = int(user_query_lower.split()[-1])
+                explanation = df.loc[df["transaction_id"]==tx_id, "explanation"].values
+                if len(explanation) > 0:
+                    response = f"🤖 Transaction {tx_id} explanation:\n{explanation[0]}"
+                else:
+                    response = f"🤖 Transaction {tx_id} not found."
+            except:
+                response = "🤖 Please provide a valid transaction ID after 'Explain transaction'."
+        elif "risk summary" in user_query_lower:
+            summary = df["risk_level"].value_counts()
+            response = "🤖 Risk Summary:\n" + summary.to_string()
 
-    with st.expander("📨 View Simulated Email Alert"):
-        st.code(email_body)
-
-    st.info("📤 Email alert sent to: audit.department@gov.in (SIMULATED)")
+        st.text_area("Auditor Bot Response:", value=response, height=150)
