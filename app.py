@@ -464,7 +464,7 @@ elif data_option == "Use Sample Dataset (Demo)":
     st.info("📊 Using synthetic demo dataset (5,000 transactions)")
 
 else:
-    st.info("👆 Please select a data source to start analysis")
+    st.info("📤 Upload a CSV or click **Use Sample Dataset** to explore the dashboard.")
     st.stop()
 
 
