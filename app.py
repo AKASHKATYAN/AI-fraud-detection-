@@ -377,7 +377,7 @@ st.markdown("<br><br>", unsafe_allow_html=True)
 st.markdown("""
 <div class="main-header">
     <div class="big-title">🛡️ChitraGuptAI</div>
-    <p class="subtitle">Detect anomalies, assess risk, and support government audits using AI</p>
+    <p class="subtitle">Upload your transaction data for comprehensive AI-powered fraud detection and risk analysis.</p>
 </div>
 """, unsafe_allow_html=True)
 
