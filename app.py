@@ -432,24 +432,41 @@ def generate_sample_data(n=5000):
     )
 
 # --------------------------------------------------
-# SIDEBAR - Data Input Section
+# DATA INPUT (MAIN PAGE – NO SIDEBAR)
 # --------------------------------------------------
-st.sidebar.header("📂 Data Input")
+st.markdown("## 📂 Data Input")
 
-uploaded_file = st.sidebar.file_uploader("Upload CSV", type="csv")
-use_sample = st.sidebar.button("🧪 Use Sample Dataset")
+data_option = st.selectbox(
+    "Choose Data Source",
+    [
+        "Select an option",
+        "Upload CSV File",
+        "Use Sample Dataset (Demo)"
+    ]
+)
 
-if uploaded_file:
-    df = pd.read_csv(uploaded_file)
-    st.sidebar.success("✅ Uploaded dataset loaded")
+if data_option == "Upload CSV File":
+    uploaded_file = st.file_uploader(
+        "Upload CSV",
+        type="csv",
+        help="Upload procurement, welfare, or transaction data"
+    )
+    
+    if uploaded_file:
+        df = pd.read_csv(uploaded_file)
+        st.success("✅ CSV file loaded successfully")
+    else:
+        st.warning("📤 Please upload a CSV file to continue")
+        st.stop()
 
-elif use_sample:
+elif data_option == "Use Sample Dataset (Demo)":
     df = generate_sample_data()
-    st.sidebar.info("📊 Using large sample dataset (5,000 rows)")
+    st.info("📊 Using synthetic demo dataset (5,000 transactions)")
 
 else:
-    st.info("📤 Upload a CSV or click **Use Sample Dataset** to explore the dashboard.")
+    st.info("👆 Please select a data source to start analysis")
     st.stop()
+
 
 # --------------------------------------------------
 # FEATURE ENGINEERING (ML LOGIC UNCHANGED)
