@@ -10,7 +10,7 @@ import random
 # PAGE CONFIG
 # --------------------------------------------------
 st.set_page_config(
-    page_title="AI Public Fraud Detection",
+    page_title="ChitraGuptAI",
     page_icon="🛡️",
     layout="wide"
 )
@@ -358,7 +358,7 @@ st.markdown("""
 # --------------------------------------------------
 # NAVIGATION - Back to Main Website Button
 # --------------------------------------------------
-MAIN_WEBSITE_URL = "https://mainwebsite.com"  # 🔧 CONFIGURE THIS URL
+MAIN_WEBSITE_URL = "https://auditnova.lovable.app/"  # 🔧 CONFIGURE THIS URL
 
 st.markdown(f"""
 <div class="nav-button">
